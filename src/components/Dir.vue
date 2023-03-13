@@ -1,31 +1,60 @@
 <script setup lang="ts">
-import { reactive, onMounted } from "vue";
+import { computed, toRefs } from "vue";
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-import { invoke } from "@tauri-apps/api/tauri";
+// import { invoke } from "@tauri-apps/api/tauri";
+import { Directory } from '../types/Directory'
 
-const dirs = reactive<String[]>([]);
-
-function getDirs(path: string): Promise<string[]> {
-  return invoke<string[]>('run', { path })
-  .catch(err => {
-    console.log(err)
-    return []
-  })
+interface Props {
+  focusDir: string;
+  dirList: Directory[];
 }
 
-onMounted(() => {
-  getDirs('/').then(res => {
-    dirs.push(...res.map(item => item.slice(1)))
-  })
+interface Emits {
+  (event: 'dirClick', data: Directory, isOpen: boolean): void
+}
+
+const props = defineProps<Props>()
+const emits = defineEmits<Emits>()
+
+
+function handleDirClick(dir: Directory) {
+  emits('dirClick', dir, isOpen.value)
+}
+
+const isOpen = computed(() => {
+  const { dirList } = props
+  const { parent } = dirList[0]
+  if(!parent) return true;
+  return props.focusDir.startsWith(parent)
 })
 
 </script>
 
 <template>
-  <div class="flex-1 m-103">
-    <div v-for="item in dirs">
-      {{ item }}
+  <div v-if="!!dirList.length && isOpen" class="dir-list">
+    <div
+      class="dir-list--item"
+      :class="{'dir-list--open': isOpen }"
+      v-for="dir in dirList"
+      @click.stop="handleDirClick(dir)"
+    >
+      {{ dir.name }}
+      <Dir
+        :dirList="dir.children || []"
+        :focusDir="focusDir"
+        @dirClick="handleDirClick"
+      />
     </div>
   </div>
 </template>
 
+<style lang="scss" scoped>
+.dir-list {
+  &--open {
+    color: green;
+  }
+  &--item {
+    padding-left: 0.1rem;
+  }
+}
+</style>
